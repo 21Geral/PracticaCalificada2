@@ -1,35 +1,59 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import Header from "./components/Header";
+import Main from "./components/Main";
+import { getImages, searchImages } from "./api/pexels/services";
+const initCategories = [
+  { id: 1, name: "Mountain", status: false },
+  { id: 2, name: "Beaches", status: false },
+  { id: 3, name: "Birds", status: false },
+  { id: 4, name: "Food", status: false },
+];
 
-function App() {
-  const [count, setCount] = useState(0)
+const limitMax = 24;
+export default function App() {
+  const [images, setImages] = useState([]);
+  const [categories, setCategories] = useState(initCategories);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  const handleSearchImages = async () => {
+    setIsLoading(true);
+    try {
+      const category = categories.find((cat) => cat.status === true);
+      let photos = [];
+      if (category) {
+        const { data } = await searchImages(category.name, limitMax);
+        setSelectedCategory(category.name);
+        photos = data.photos;
+      } else if (searchText.trim()) {
+        const { data } = await searchImages(searchText, limitMax);
+        setSelectedCategory(searchText);
+        photos = data.photos;
+      } else {
+        const { data } = await getImages(limitMax);
+        photos = data.photos;
+      }
+      setImages(photos);
+    } catch (error) {
+      console.error("Error fetching images:", error);
+      setImages([]);
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    handleSearchImages();
+  }, [categories, searchText]);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="flex flex-col items-center justify-center px-2.5 pt-13 gap-6">
+      <Header categories={categories} setCategories={setCategories} setSearchText={setSearchText} />
+      <Main images={images} selectedCategory={selectedCategory} loading={isLoading} error={isError} />
+   
+    </div>
+  );
 }
-
-export default App
